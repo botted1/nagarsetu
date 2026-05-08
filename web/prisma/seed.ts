@@ -1,10 +1,11 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { DEPARTMENT_SEED } from "../lib/departments";
 
-const url = process.env.DATABASE_URL?.replace(/^file:/, "") ?? "./dev.db";
-const adapter = new PrismaBetterSqlite3({ url });
+const url = process.env.DATABASE_URL;
+if (!url) throw new Error("DATABASE_URL is not set");
+const adapter = new PrismaPg(url);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {

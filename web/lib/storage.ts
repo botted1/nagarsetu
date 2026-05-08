@@ -1,14 +1,41 @@
-import { Storage } from "@google-cloud/storage";
+import { Storage, type StorageOptions } from "@google-cloud/storage";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { nanoid } from "nanoid";
 
 const bucketName = process.env.GCS_BUCKET;
-const useGcs = Boolean(
-  bucketName && process.env.GOOGLE_APPLICATION_CREDENTIALS
-);
 
-const gcs = useGcs ? new Storage() : null;
+// Two ways to authenticate:
+// 1. Local dev: GOOGLE_APPLICATION_CREDENTIALS = absolute path to JSON key file.
+// 2. Vercel / serverless: GCS_CREDENTIALS_JSON = the entire JSON key inlined as
+//    a single env var. This is the standard pattern when the runtime has no
+//    persistent filesystem.
+function buildStorage(): Storage | null {
+  if (!bucketName) return null;
+
+  const inlineJson = process.env.GCS_CREDENTIALS_JSON?.trim();
+  const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+
+  const opts: StorageOptions = {};
+  if (inlineJson) {
+    try {
+      opts.credentials = JSON.parse(inlineJson);
+    } catch (err) {
+      console.error(
+        "[storage] GCS_CREDENTIALS_JSON is set but is not valid JSON:",
+        err
+      );
+      return null;
+    }
+  } else if (keyPath) {
+    opts.keyFilename = keyPath;
+  } else {
+    return null;
+  }
+  return new Storage(opts);
+}
+
+const gcs = buildStorage();
 
 export async function uploadPhoto(
   file: File
@@ -31,6 +58,8 @@ export async function uploadPhoto(
     return { url: signed, storage: "gcs" };
   }
 
+  // Local fallback. Note: this won't survive on Vercel (read-only FS), so
+  // configure GCS for any deployed environment.
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
   const subDir = path.dirname(key);
   await fs.mkdir(path.join(uploadsDir, subDir), { recursive: true });
