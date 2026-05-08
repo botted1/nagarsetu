@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build outputs
+.next/
+.turbo/
+out/
+dist/
+
+# Local data / secrets
+.env
+.env.local
+*.db
+*.db-journal
+prisma/dev.db
+prisma/migrations/.lock
+
+# Uploaded photos in dev
+web/public/uploads/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.log
+web/emerald-oxide-437518-p6-bd174bbeb8e9.json

@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  CITIZEN
+  ADMIN
+}
+
+enum Status {
+  SUBMITTED
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(CITIZEN)
+  phone         String?
+
+  departmentId  String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+
+  grievances    Grievance[]
+  updates       GrievanceUpdate[]
+
+  accounts      Account[]
+  sessions      Session[]
+
+  createdAt     DateTime  @default(now())
+}
+
+model Department {
+  id           String      @id @default(cuid())
+  slug         String      @unique
+  name         String
+  description  String
+  contactEmail String
+  color        String      @default("#F59E0B")
+  icon         String      @default("Wrench")
+
+  staff        User[]
+  grievances   Grievance[]
+}
+
+model Grievance {
+  id                  String     @id @default(cuid())
+  userId              String
+  user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title               String
+  description         String
+  category            String?
+  priority            Priority   @default(MEDIUM)
+  status              Status     @default(SUBMITTED)
+
+  departmentId        String?
+  department          Department? @relation(fields: [departmentId], references: [id])
+
+  address             String?
+  lat                 Float?
+  lng                 Float?
+
+  photoUrl            String?
+  fixPhotoUrl         String?
+
+  draftedComplaint    String?
+  agentReasoning      String?
+  similarGrievanceIds String     @default("[]")
+
+  // Resolution verification (set when admin uploads a "fix photo" + agent verifies)
+  resolutionVerdict     String?    // "fixed" | "unchanged" | "different_issue" | "uncertain"
+  resolutionConfidence  Float?
+  resolutionReasoning   String?
+  resolutionVerifiedAt  DateTime?
+
+  updates             GrievanceUpdate[]
+
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  @@index([status])
+  @@index([departmentId])
+  @@index([userId])
+}
+
+model GrievanceUpdate {
+  id          String     @id @default(cuid())
+  grievanceId String
+  grievance   Grievance  @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+
+  fromStatus  Status?
+  toStatus    Status
+  note        String?
+
+  byUserId    String?
+  byUser      User?      @relation(fields: [byUserId], references: [id])
+
+  createdAt   DateTime   @default(now())
+
+  @@index([grievanceId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

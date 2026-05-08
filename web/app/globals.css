@@ -1,0 +1,168 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: oklch(0.99 0.005 95);
+  --foreground: oklch(0.16 0.02 270);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.16 0.02 270);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.16 0.02 270);
+
+  /* Saffron primary */
+  --primary: oklch(0.78 0.16 60);
+  --primary-foreground: oklch(0.18 0.04 60);
+
+  /* Emerald accent */
+  --accent: oklch(0.78 0.15 165);
+  --accent-foreground: oklch(0.16 0.04 165);
+
+  --secondary: oklch(0.96 0.005 95);
+  --secondary-foreground: oklch(0.18 0.02 270);
+
+  --muted: oklch(0.96 0.005 95);
+  --muted-foreground: oklch(0.5 0.015 270);
+
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.92 0.005 270);
+  --input: oklch(0.92 0.005 270);
+  --ring: oklch(0.78 0.16 60);
+
+  --radius: 0.875rem;
+}
+
+.dark {
+  --background: oklch(0.14 0.012 270);
+  --foreground: oklch(0.96 0.005 95);
+  --card: oklch(0.18 0.014 270);
+  --card-foreground: oklch(0.96 0.005 95);
+  --popover: oklch(0.18 0.014 270);
+  --popover-foreground: oklch(0.96 0.005 95);
+
+  --primary: oklch(0.82 0.15 60);
+  --primary-foreground: oklch(0.16 0.04 60);
+
+  --accent: oklch(0.78 0.15 165);
+  --accent-foreground: oklch(0.16 0.04 165);
+
+  --secondary: oklch(0.22 0.012 270);
+  --secondary-foreground: oklch(0.96 0.005 95);
+
+  --muted: oklch(0.22 0.012 270);
+  --muted-foreground: oklch(0.66 0.015 270);
+
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.26 0.012 270);
+  --input: oklch(0.26 0.012 270);
+  --ring: oklch(0.78 0.16 60);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    font-feature-settings: "ss01", "cv11", "calt";
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: oklch(0.85 0.15 60 / 0.4);
+  }
+}
+
+@layer utilities {
+  .grain {
+    position: relative;
+  }
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.7'/></svg>");
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .gradient-saffron {
+    background: linear-gradient(
+      135deg,
+      oklch(0.86 0.16 60) 0%,
+      oklch(0.78 0.16 60) 50%,
+      oklch(0.7 0.18 35) 100%
+    );
+  }
+  .gradient-civic {
+    background: radial-gradient(
+        1200px 600px at 80% -10%,
+        oklch(0.92 0.12 60 / 0.6),
+        transparent
+      ),
+      radial-gradient(
+        900px 500px at 0% 100%,
+        oklch(0.92 0.1 165 / 0.4),
+        transparent
+      ),
+      var(--background);
+  }
+}
+
+/* Leaflet container overrides so it sits cleanly on our cards */
+.leaflet-container {
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
