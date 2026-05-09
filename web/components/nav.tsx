@@ -21,9 +21,6 @@ export async function Nav() {
           <span className="text-base">
             Nagar<span className="text-[var(--primary)]">Setu</span>
           </span>
-          <span className="ml-1 hidden text-xs text-[var(--muted-foreground)] sm:inline">
-            · Grievance Router
-          </span>
         </Link>
 
         <nav className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 sm:flex [&>*]:pointer-events-auto">

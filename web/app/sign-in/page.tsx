@@ -24,7 +24,10 @@ async function SignInCard({
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   const sp = await searchParams;
-  const callbackUrl = sp.callbackUrl ?? "/grievances";
+  // Citizens default to /report (the most common first action). Admins
+  // hitting /report get bounced to /admin by the page's own role check —
+  // one extra hop but keeps the citizen flow zero-click.
+  const callbackUrl = sp.callbackUrl ?? "/report";
   const error = sp.error;
 
   return (

@@ -37,6 +37,7 @@ export async function POST(req: Request) {
     },
   });
 
-  const next = session.user.role === "ADMIN" ? "/admin" : "/grievances";
+  // Citizens land on /report — most common first action after onboarding.
+  const next = session.user.role === "ADMIN" ? "/admin" : "/report";
   return NextResponse.json({ ok: true, next });
 }
