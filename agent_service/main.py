@@ -1,9 +1,12 @@
 """FastAPI wrapper around the grievance triage agent."""
 from __future__ import annotations
 
+import asyncio
+import io
 import json
 import os
 import re
+import traceback
 import uuid
 from typing import Any
 
@@ -266,6 +269,36 @@ async def _fetch_image(url: str) -> tuple[bytes, str]:
         return res.content, ctype
 
 
+def _compress_image(data: bytes, mime: str, max_dim: int = 1024, max_bytes: int = 900_000) -> tuple[bytes, str]:
+    """Resize / re-encode an image so it stays within Gemini's inline limits."""
+    try:
+        from PIL import Image
+    except ImportError:
+        # Pillow not installed — return as-is
+        return data, mime
+    try:
+        img = Image.open(io.BytesIO(data))
+        # Convert RGBA/palette to RGB for JPEG
+        if img.mode in ("RGBA", "P", "LA"):
+            img = img.convert("RGB")
+        # Resize if either dimension exceeds max_dim
+        w, h = img.size
+        if w > max_dim or h > max_dim:
+            ratio = min(max_dim / w, max_dim / h)
+            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+        # Encode as JPEG at decreasing quality until under max_bytes
+        for quality in (85, 70, 50):
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=quality)
+            encoded = buf.getvalue()
+            if len(encoded) <= max_bytes:
+                return encoded, "image/jpeg"
+        # Last resort — return the lowest quality attempt
+        return encoded, "image/jpeg"  # type: ignore[possibly-undefined]
+    except Exception:
+        return data, mime
+
+
 @app.post("/verify-resolution", response_model=VerifyOut)
 async def verify_resolution(payload: VerifyIn) -> VerifyOut:
     if not (
@@ -288,39 +321,63 @@ async def verify_resolution(payload: VerifyIn) -> VerifyOut:
             reasoning=f"Could not fetch one of the images: {type(exc).__name__}",
         )
 
+    # Compress images to avoid Gemini inline-data limits
+    original_bytes, original_mime = _compress_image(original_bytes, original_mime)
+    fix_bytes, fix_mime = _compress_image(fix_bytes, fix_mime)
+
+    print(
+        f"[verify] original image: {len(original_bytes)} bytes, mime={original_mime}; "
+        f"fix image: {len(fix_bytes)} bytes, mime={fix_mime}"
+    )
+
     prompt = VERIFY_PROMPT_TEMPLATE.format(
         title=payload.grievanceTitle, description=payload.grievanceDescription
     )
 
-    try:
-        client = genai.Client()
-        response = client.models.generate_content(
-            model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
-            contents=[
-                genai_types.Content(
-                    role="user",
-                    parts=[
-                        genai_types.Part.from_text(text=prompt),
-                        genai_types.Part.from_bytes(
-                            data=original_bytes, mime_type=original_mime
-                        ),
-                        genai_types.Part.from_text(
-                            text="\n\n^ Image 1: original problem (citizen's photo)\n"
-                            "v Image 2: claimed fix (municipality's photo)"
-                        ),
-                        genai_types.Part.from_bytes(
-                            data=fix_bytes, mime_type=fix_mime
-                        ),
-                    ],
-                )
-            ],
-        )
-    except Exception as exc:  # noqa: BLE001
-        print(f"[verify] Gemini call failed: {exc!r}")
+    # Retry with exponential backoff (handles transient 429 / 500 from Gemini)
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            client = genai.Client()
+            response = client.models.generate_content(
+                model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+                contents=[
+                    genai_types.Content(
+                        role="user",
+                        parts=[
+                            genai_types.Part.from_text(text=prompt),
+                            genai_types.Part.from_bytes(
+                                data=original_bytes, mime_type=original_mime
+                            ),
+                            genai_types.Part.from_text(
+                                text="\n\n^ Image 1: original problem (citizen's photo)\n"
+                                "v Image 2: claimed fix (municipality's photo)"
+                            ),
+                            genai_types.Part.from_bytes(
+                                data=fix_bytes, mime_type=fix_mime
+                            ),
+                        ],
+                    )
+                ],
+            )
+            last_exc = None
+            break  # success
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            print(f"[verify] Gemini call attempt {attempt + 1} failed: {exc!r}")
+            if hasattr(exc, "status_code"):
+                print(f"[verify]   status_code={exc.status_code}")
+            if hasattr(exc, "message"):
+                print(f"[verify]   message={exc.message}")
+            traceback.print_exc()
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)  # 1s, 2s
+
+    if last_exc is not None:
         return VerifyOut(
             verdict="uncertain",
             confidence=0.0,
-            reasoning=f"Gemini call failed: {type(exc).__name__}. Approved without verification.",
+            reasoning=f"Gemini call failed after 3 attempts: {type(last_exc).__name__}. Approved without verification.",
         )
 
     text = (response.text or "").strip()
