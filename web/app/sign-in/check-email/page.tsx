@@ -21,11 +21,7 @@ export default function CheckEmailPage() {
           device. The link is valid for 24 hours.
         </p>
         <p className="mx-auto mt-4 max-w-sm rounded-lg border border-[var(--border)] bg-[var(--secondary)]/40 p-3 text-xs text-[var(--muted-foreground)]">
-          Running locally without a Resend key? Check the terminal where{" "}
-          <code className="rounded bg-[var(--card)] px-1 py-0.5 font-mono">
-            pnpm dev
-          </code>{" "}
-          is running — the magic link is logged there.
+          Didn't receive an email? Check your spam folder.
         </p>
         <Button asChild variant="ghost" className="mt-6">
           <Link href="/">← Back home</Link>
